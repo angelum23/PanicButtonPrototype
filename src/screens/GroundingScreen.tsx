@@ -50,6 +50,8 @@ export default function GroundingScreen() {
       const nextSense = SENSES.find(sense => !completedSteps.includes(sense.id));
       if (nextSense) {
         setCompletedSteps([...completedSteps, nextSense.id]);
+      } else {
+        navigation.navigate('Relaxation');
       }
     } else {
       setIsRecording(true);
@@ -65,8 +67,8 @@ export default function GroundingScreen() {
         {SENSES.map((sense) => {
           const isCompleted = completedSteps.includes(sense.id);
           return (
-            <View 
-              key={sense.id} 
+            <View
+              key={sense.id}
               style={[styles.listItem, isCompleted && styles.listItemSelected]}
             >
               <Text style={styles.icon}>{sense.icon}</Text>
@@ -82,9 +84,9 @@ export default function GroundingScreen() {
             {isRecording ? "Ouvindo... Toque para concluir e avançar" : "Toque para falar e avançar"}
           </Text>
           <TouchableOpacity onPress={toggleRecording} activeOpacity={0.8}>
-            <Animated.View 
+            <Animated.View
               style={[
-                styles.micButton, 
+                styles.micButton,
                 isRecording && styles.micButtonRecording,
                 { transform: [{ scale: pulseAnim }] }
               ]}
@@ -97,7 +99,7 @@ export default function GroundingScreen() {
       </ScrollView>
 
       <View style={styles.buttonContainer}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[styles.button, styles.secondaryButton]}
           onPress={() => navigation.navigate('Rating')}
         >

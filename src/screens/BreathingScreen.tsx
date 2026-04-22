@@ -9,11 +9,12 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Breathing'>
 
 export default function BreathingScreen() {
   const navigation = useNavigation<NavigationProp>();
-  const [phase, setPhase] = useState<'Inspire' | 'Expire'>('Inspire');
-  const [seconds, setSeconds] = useState(1);
+  const [phase, setPhase] = useState<'Vamos respirar juntos' | 'Inspire' | 'Expire'>('Vamos respirar juntos');
+  const [seconds, setSeconds] = useState(2);
+  const [timeLeft, setTimeLeft] = useState(0);
   const [direction, setDirection] = useState<'up' | 'down'>('up');
 
-  const scale = useRef(new Animated.Value(1)).current;
+  const scale = useRef(new Animated.Value(1.5)).current;
   const opacity = useRef(new Animated.Value(0.7)).current;
 
   useEffect(() => {
@@ -21,11 +22,31 @@ export default function BreathingScreen() {
     let currentPhase = phase;
     let currentDirection = direction;
 
-    const animate = () => {
-      const toValue = currentPhase === 'Inspire' ? 1.5 : 1;
-      const baseDurationMs = currentSeconds * 1000;
-      const duration = currentPhase === 'Inspire' ? baseDurationMs : baseDurationMs * 0.7;
+    let toValue = 1;
+    let duration = 3000;
 
+    if (currentPhase === 'Vamos respirar juntos') {
+      toValue = 1;
+      duration = 3000;
+    } else {
+      toValue = currentPhase === 'Inspire' ? 1.5 : 1;
+      const baseDurationMs = currentSeconds * 1000;
+      duration = currentPhase === 'Inspire' ? baseDurationMs : baseDurationMs * 0.7;
+    }
+
+    const initialTimeLeft = Math.ceil(duration / 1000);
+    setTimeLeft(initialTimeLeft);
+
+    let currentIntervalTimeLeft = initialTimeLeft;
+
+    const interval = setInterval(() => {
+      currentIntervalTimeLeft -= 1;
+      if (currentIntervalTimeLeft > 0) {
+        setTimeLeft(currentIntervalTimeLeft);
+      }
+    }, 1000);
+
+    const animate = () => {
       Animated.parallel([
         Animated.timing(scale, {
           toValue,
@@ -37,36 +58,43 @@ export default function BreathingScreen() {
           duration,
           useNativeDriver: true,
         })
-      ]).start(() => {
-        if (currentPhase === 'Inspire') {
-          currentPhase = 'Expire';
-        } else {
-          currentPhase = 'Inspire';
-          if (currentDirection === 'up') {
-            if (currentSeconds < 10) {
-              currentSeconds += 1;
-            } else {
-              currentDirection = 'down';
-              currentSeconds -= 1;
-            }
+      ]).start(({ finished }) => {
+        clearInterval(interval);
+
+        if (finished) {
+          if (currentPhase === 'Vamos respirar juntos') {
+            currentPhase = 'Inspire';
+          } else if (currentPhase === 'Inspire') {
+            currentPhase = 'Expire';
           } else {
-            if (currentSeconds > 1) {
-              currentSeconds -= 1;
+            currentPhase = 'Inspire';
+            if (currentDirection === 'up') {
+              if (currentSeconds < 10) {
+                currentSeconds += 1;
+              } else {
+                currentDirection = 'down';
+                currentSeconds -= 1;
+              }
             } else {
-              return;
+              if (currentSeconds > 1) {
+                currentSeconds -= 1;
+              } else {
+                return;
+              }
             }
           }
-        }
 
-        setPhase(currentPhase);
-        setSeconds(currentSeconds);
-        setDirection(currentDirection);
+          setPhase(currentPhase);
+          setSeconds(currentSeconds);
+          setDirection(currentDirection);
+        }
       });
     };
 
     animate();
 
     return () => {
+      clearInterval(interval);
       scale.stopAnimation();
       opacity.stopAnimation();
     };
@@ -79,8 +107,12 @@ export default function BreathingScreen() {
 
       <View style={styles.animationContainer}>
         <Animated.View style={[styles.circle, { transform: [{ scale }], opacity }]} />
-        <Text style={styles.instructionText}>{phase}</Text>
-        <Text style={styles.secondsText}>{seconds}s</Text>
+        <Text style={phase === 'Vamos respirar juntos' ? styles.prePhaseText : styles.instructionText}>
+          {phase}
+        </Text>
+        <Text style={[styles.secondsText, phase === 'Vamos respirar juntos' && { marginTop: 0 }]}>
+          {timeLeft}s
+        </Text>
       </View>
 
       <View style={styles.buttonContainer}>
@@ -136,6 +168,17 @@ const styles = StyleSheet.create({
     fontWeight: typography.weights.bold,
     color: colors.text,
     zIndex: 1,
+    textAlign: 'center',
+    paddingHorizontal: spacing.m,
+  },
+  prePhaseText: {
+    position: 'absolute',
+    transform: [{ translateY: -200 }],
+    fontSize: typography.sizes.xlarge,
+    fontWeight: typography.weights.bold,
+    color: colors.text,
+    textAlign: 'center',
+    paddingHorizontal: spacing.m,
   },
   secondsText: {
     fontSize: typography.sizes.large,
