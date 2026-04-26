@@ -12,14 +12,14 @@ export default function RatingScreen() {
   const navigation = useNavigation<NavigationProp>();
   const [rating, setRating] = useState<number | null>(null);
 
-  const handleSave = async () => {
-    if (rating === null) return;
+  const handleSave = async (ratingParam: number | null) => {
+    if (ratingParam === null) return;
     try {
-      await insertLog(rating);
+      await insertLog(ratingParam);
       Alert.alert('Registro Salvo', 'Sua intensidade foi registrada com sucesso.');
       navigation.reset({
         index: 0,
-        routes: [{ name: 'Home' }],
+        routes: [{ name: 'EmergencyHome' }],
       });
     } catch (error) {
       console.error(error);
@@ -52,9 +52,9 @@ export default function RatingScreen() {
         ))}
       </View>
 
-      <TouchableOpacity 
+      <TouchableOpacity
         style={[styles.button, rating === null && styles.buttonDisabled]}
-        onPress={handleSave}
+        onPress={() => { handleSave(rating) }}
         disabled={rating === null}
       >
         <Text style={styles.buttonText}>Finalizar e Voltar</Text>

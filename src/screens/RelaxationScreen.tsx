@@ -1,11 +1,43 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, Image, StyleSheet, TouchableOpacity, ScrollView, Dimensions, ImageSourcePropType } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { colors, spacing, typography } from '../theme';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Relaxation'>;
+
+const STEPS: { number: number; svg: ImageSourcePropType; bgColor: string; text: string }[] = [
+  {
+    number: 1,
+    svg: require('../svg/step1.svg'),
+    bgColor: '#EDE7F6',
+    text: 'Encontre um local seguro e sente-se ou deite-se em posição fetal (abraçando os joelhos).',
+  },
+  {
+    number: 2,
+    svg: require('../svg/step2.svg'),
+    bgColor: '#FFF8E1',
+    text: 'Aperte todo o seu corpo o mais forte que puder pelo maior tempo que conseguir.',
+  },
+  {
+    number: 3,
+    svg: require('../svg/step3.svg'),
+    bgColor: '#E8F5E9',
+    text: 'Quando sentir que não aguenta mais, solte toda a tensão de uma vez.',
+  },
+  {
+    number: 4,
+    svg: require('../svg/step4.svg'),
+    bgColor: '#E3F2FD',
+    text: 'Respire fundo e relaxe. Repita o ciclo quantas vezes quiser para relaxar.',
+  },
+];
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const CARD_GAP = spacing.m;
+const HORIZONTAL_PADDING = spacing.l;
+const CARD_WIDTH = (SCREEN_WIDTH - HORIZONTAL_PADDING * 2 - CARD_GAP) / 2;
 
 export default function RelaxationScreen() {
   const navigation = useNavigation<NavigationProp>();
@@ -15,26 +47,22 @@ export default function RelaxationScreen() {
       <Text style={styles.title}>Relaxamento Muscular</Text>
       <Text style={styles.subtitle}>Siga as instruções abaixo</Text>
 
-      <ScrollView style={styles.instructionsContainer}>
-        <View style={styles.stepCard}>
-          <Text style={styles.stepNumber}>1</Text>
-          <Text style={styles.stepText}>Encontre um local seguro e sente-se ou deite-se em posição fetal (abraçando os joelhos).</Text>
-        </View>
-
-        <View style={styles.stepCard}>
-          <Text style={styles.stepNumber}>2</Text>
-          <Text style={styles.stepText}>Aperte todo o seu corpo o mais forte que puder pelo tempo que conseguir.</Text>
-        </View>
-
-        <View style={styles.stepCard}>
-          <Text style={styles.stepNumber}>3</Text>
-          <Text style={styles.stepText}>Solte de uma vez e sinta o relaxamento profundo.</Text>
-        </View>
-
-        <View style={styles.stepCard}>
-          <Text style={styles.stepNumber}>4</Text>
-          <Text style={styles.stepText}>Respire fundo e repita o processo.</Text>
-        </View>
+      <ScrollView
+        style={styles.scrollContainer}
+        contentContainerStyle={styles.gridContainer}
+        showsVerticalScrollIndicator={false}
+      >
+        {STEPS.map((step) => (
+          <View key={step.number} style={[styles.stepCard, { width: CARD_WIDTH }]}>
+            <View style={styles.stepBadge}>
+              <Text style={styles.stepBadgeText}>{step.number}</Text>
+            </View>
+            <View style={[styles.iconContainer, { backgroundColor: step.bgColor }]}>
+              <Image source={step.svg} style={styles.stepIcon} />
+            </View>
+            <Text style={styles.stepText}>{step.text}</Text>
+          </View>
+        ))}
       </ScrollView>
 
       <View style={styles.buttonContainer}>
@@ -68,42 +96,60 @@ const styles = StyleSheet.create({
     marginTop: spacing.s,
     marginBottom: spacing.xl,
   },
-  instructionsContainer: {
+  scrollContainer: {
     flex: 1,
     width: '100%',
-    paddingHorizontal: spacing.l,
+  },
+  gridContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: HORIZONTAL_PADDING,
+    gap: CARD_GAP,
   },
   stepCard: {
     backgroundColor: colors.white,
+    borderRadius: 20,
     padding: spacing.m,
-    borderRadius: 16,
-    marginBottom: spacing.m,
-    flexDirection: 'row',
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 3,
   },
-  stepNumber: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+  iconContainer: {
+    width: 128,
+    height: 128,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.s,
+  },
+  stepIcon: {
+    width: 86,
+    height: 86,
+  },
+  stepBadge: {
     backgroundColor: colors.secondary,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.s,
+  },
+  stepBadgeText: {
     color: colors.text,
-    textAlign: 'center',
-    textAlignVertical: 'center',
-    lineHeight: 32,
     fontWeight: typography.weights.bold,
-    fontSize: typography.sizes.medium,
-    marginRight: spacing.m,
+    fontSize: typography.sizes.small,
+    lineHeight: 26,
+    textAlign: 'center',
   },
   stepText: {
-    flex: 1,
-    fontSize: typography.sizes.medium,
+    fontSize: typography.sizes.small,
     color: colors.text,
-    lineHeight: 24,
+    lineHeight: 20,
+    textAlign: 'center',
   },
   buttonContainer: {
     width: '100%',
@@ -122,5 +168,5 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontWeight: typography.weights.bold,
     fontSize: typography.sizes.medium,
-  }
+  },
 });
