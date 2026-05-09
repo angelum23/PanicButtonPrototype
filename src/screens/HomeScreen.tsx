@@ -157,6 +157,22 @@ export default function HomeScreen() {
           <Text style={styles.emergencyButtonText}>Ligar para terapeuta</Text>
         </TouchableOpacity>
       </View>
+
+      <View style={styles.reportCard}>
+        <Text style={styles.reportEmoji}>📊</Text>
+        <View style={styles.reportContent}>
+          <Text style={styles.reportTitle}>Acompanhamento terapêutico</Text>
+          <Text style={styles.reportDescription}>
+            Visualize e compartilhe um relatório sintético do seu uso do app com seu terapeuta.
+          </Text>
+        </View>
+        <TouchableOpacity
+          style={styles.reportButton}
+          onPress={() => navigation.navigate('EmergencyTab', { screen: 'UsageReport' })}
+        >
+          <Text style={styles.reportButtonText}>Exportar dados de uso</Text>
+        </TouchableOpacity>
+      </View>
     </ScrollView>
   );
 }
@@ -288,5 +304,52 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  reportCard: {
+    backgroundColor: colors.white,
+    borderRadius: borderRadius.m,
+    padding: spacing.l,
+    marginTop: spacing.xl,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+    borderLeftWidth: 4,
+    borderLeftColor: colors.primary,
+  },
+  reportEmoji: {
+    fontSize: 32,
+    marginBottom: spacing.s,
+  },
+  reportContent: {
+    marginBottom: spacing.m,
+  },
+  reportTitle: {
+    fontSize: typography.sizes.medium,
+    fontWeight: typography.weights.bold,
+    color: colors.text,
+    marginBottom: spacing.xs,
+  },
+  reportDescription: {
+    fontSize: typography.sizes.small,
+    color: colors.textLight,
+    lineHeight: 22,
+  },
+  reportButton: {
+    backgroundColor: colors.primary,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  reportButtonText: {
+    color: colors.white,
+    fontSize: 15,
+    fontWeight: '700',
   },
 });

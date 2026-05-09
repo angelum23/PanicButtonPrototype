@@ -1,34 +1,40 @@
-import React from 'react';
-import { View, Text, Image, StyleSheet, TouchableOpacity, ScrollView, Dimensions, ImageSourcePropType } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import React, { useEffect, useRef, useCallback } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions } from 'react-native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { colors, spacing, typography } from '../theme';
+import Step1Icon from '../components/svg/Step1Icon';
+import Step2Icon from '../components/svg/Step2Icon';
+import Step3Icon from '../components/svg/Step3Icon';
+import Step4Icon from '../components/svg/Step4Icon';
+import { insertRelaxationSession, updateRelaxationSession } from '../db/database';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Relaxation'>;
+type RelaxationRouteProp = RouteProp<RootStackParamList, 'Relaxation'>;
 
-const STEPS: { number: number; svg: ImageSourcePropType; bgColor: string; text: string }[] = [
+const STEPS: { number: number; Icon: React.FC<{ width?: number; height?: number; color?: string }>; bgColor: string; text: string }[] = [
   {
     number: 1,
-    svg: require('../svg/step1.svg'),
+    Icon: Step1Icon,
     bgColor: '#EDE7F6',
     text: 'Encontre um local seguro e sente-se ou deite-se em posição fetal (abraçando os joelhos).',
   },
   {
     number: 2,
-    svg: require('../svg/step2.svg'),
+    Icon: Step2Icon,
     bgColor: '#FFF8E1',
     text: 'Aperte todo o seu corpo o mais forte que puder pelo maior tempo que conseguir.',
   },
   {
     number: 3,
-    svg: require('../svg/step3.svg'),
+    Icon: Step3Icon,
     bgColor: '#E8F5E9',
     text: 'Quando sentir que não aguenta mais, solte toda a tensão de uma vez.',
   },
   {
     number: 4,
-    svg: require('../svg/step4.svg'),
+    Icon: Step4Icon,
     bgColor: '#E3F2FD',
     text: 'Respire fundo e relaxe. Repita o ciclo quantas vezes quiser para relaxar.',
   },
@@ -41,6 +47,42 @@ const CARD_WIDTH = (SCREEN_WIDTH - HORIZONTAL_PADDING * 2 - CARD_GAP) / 2;
 
 export default function RelaxationScreen() {
   const navigation = useNavigation<NavigationProp>();
+  const route = useRoute<RelaxationRouteProp>();
+  const groundingSessionId = route.params?.groundingSessionId;
+
+  // ─── Session tracking ────────────────────────────────────────────────
+  const sessionIdRef = useRef<number | null>(null);
+  const exitHandledRef = useRef(false);
+
+  const finalizeSession = useCallback(async (destination: string) => {
+    if (exitHandledRef.current || sessionIdRef.current === null) return;
+    exitHandledRef.current = true;
+    try {
+      await updateRelaxationSession(sessionIdRef.current, destination);
+    } catch (e) {
+      console.warn('Falha ao registrar saída da sessão de relaxamento:', e);
+    }
+  }, []);
+
+  // Insert session record on mount
+  useEffect(() => {
+    (async () => {
+      try {
+        const id = await insertRelaxationSession(groundingSessionId);
+        sessionIdRef.current = id;
+      } catch (e) {
+        console.warn('Falha ao registrar abertura da sessão de relaxamento:', e);
+      }
+    })();
+  }, [groundingSessionId]);
+
+  // Capture back / gesture exits
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('beforeRemove', () => {
+      finalizeSession('back');
+    });
+    return unsubscribe;
+  }, [navigation, finalizeSession]);
 
   return (
     <View style={styles.container}>
@@ -58,7 +100,7 @@ export default function RelaxationScreen() {
               <Text style={styles.stepBadgeText}>{step.number}</Text>
             </View>
             <View style={[styles.iconContainer, { backgroundColor: step.bgColor }]}>
-              <Image source={step.svg} style={styles.stepIcon} />
+              <step.Icon width={86} height={86} />
             </View>
             <Text style={styles.stepText}>{step.text}</Text>
           </View>
@@ -68,7 +110,12 @@ export default function RelaxationScreen() {
       <View style={styles.buttonContainer}>
         <TouchableOpacity
           style={[styles.button, styles.secondaryButton]}
-          onPress={() => navigation.navigate('Rating')}
+          onPress={async () => {
+            await finalizeSession('Rating');
+            navigation.navigate('Rating', {
+              relaxationSessionId: sessionIdRef.current ?? undefined,
+            });
+          }}
         >
           <Text style={styles.buttonTextDark}>Eu melhorei</Text>
         </TouchableOpacity>

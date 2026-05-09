@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { View, Text, StyleSheet, Animated, TouchableOpacity, Dimensions, Easing } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { colors, spacing, typography } from '../theme';
+import { insertBreathingSession, updateBreathingSession } from '../db/database';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Breathing'>;
 
@@ -25,6 +26,40 @@ export default function BreathingScreen() {
 
   const scale = useRef(new Animated.Value(1.5)).current;
   const opacity = useRef(new Animated.Value(0.7)).current;
+
+  // ─── Session tracking ────────────────────────────────────────────────
+  const sessionIdRef = useRef<number | null>(null);
+  const exitHandledRef = useRef(false);
+
+  const finalizeSession = useCallback(async (destination: string) => {
+    if (exitHandledRef.current || sessionIdRef.current === null) return;
+    exitHandledRef.current = true;
+    try {
+      await updateBreathingSession(sessionIdRef.current, destination);
+    } catch (e) {
+      console.warn('Falha ao registrar saída da sessão de respiração:', e);
+    }
+  }, []);
+
+  // Insert session record on mount
+  useEffect(() => {
+    (async () => {
+      try {
+        const id = await insertBreathingSession();
+        sessionIdRef.current = id;
+      } catch (e) {
+        console.warn('Falha ao registrar abertura da sessão de respiração:', e);
+      }
+    })();
+  }, []);
+
+  // Capture back / gesture exits (beforeRemove fires on any screen leave)
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('beforeRemove', () => {
+      finalizeSession('back');
+    });
+    return unsubscribe;
+  }, [navigation, finalizeSession]);
 
   // Wave animated values: one per wave layer
   const wave1 = useRef(new Animated.Value(0)).current;
@@ -244,13 +279,23 @@ export default function BreathingScreen() {
       <View style={styles.buttonContainer}>
         <TouchableOpacity
           style={[styles.button, styles.secondaryButton]}
-          onPress={() => navigation.navigate('Rating')}
+          onPress={async () => {
+            await finalizeSession('Rating');
+            navigation.navigate('Rating', {
+              breathingSessionId: sessionIdRef.current ?? undefined,
+            });
+          }}
         >
           <Text style={styles.buttonTextDark}>Eu melhorei</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.button}
-          onPress={() => navigation.navigate('Grounding')}
+          onPress={async () => {
+            await finalizeSession('Grounding');
+            navigation.navigate('Grounding', {
+              breathingSessionId: sessionIdRef.current ?? undefined,
+            });
+          }}
         >
           <Text style={styles.buttonText}>Próximo passo</Text>
         </TouchableOpacity>

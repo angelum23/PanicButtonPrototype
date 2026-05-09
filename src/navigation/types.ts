@@ -9,9 +9,14 @@ export type BottomTabParamList = {
 export type EmergencyStackParamList = {
   EmergencyHome: undefined;
   Breathing: undefined;
-  Grounding: undefined;
-  Relaxation: undefined;
-  Rating: undefined;
+  Grounding: { breathingSessionId?: number } | undefined;
+  Relaxation: { groundingSessionId?: number } | undefined;
+  Rating: {
+    breathingSessionId?: number;
+    groundingSessionId?: number;
+    relaxationSessionId?: number;
+  } | undefined;
+  UsageReport: undefined;
 };
 
 export type RootStackParamList = EmergencyStackParamList;

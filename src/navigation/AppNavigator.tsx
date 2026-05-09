@@ -10,6 +10,7 @@ import BreathingScreen from '../screens/BreathingScreen';
 import GroundingScreen from '../screens/GroundingScreen';
 import RelaxationScreen from '../screens/RelaxationScreen';
 import RatingScreen from '../screens/RatingScreen';
+import UsageReportScreen from '../screens/UsageReportScreen';
 import RegistrationScreen from '../screens/RegistrationScreen';
 import { colors } from '../theme';
 
@@ -29,6 +30,7 @@ function EmergencyStackNavigator() {
       <EmergencyStack.Screen name="Grounding" component={GroundingScreen} />
       <EmergencyStack.Screen name="Relaxation" component={RelaxationScreen} />
       <EmergencyStack.Screen name="Rating" component={RatingScreen} />
+      <EmergencyStack.Screen name="UsageReport" component={UsageReportScreen} />
     </EmergencyStack.Navigator>
   );
 }

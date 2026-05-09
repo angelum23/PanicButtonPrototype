@@ -1,20 +1,45 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { colors, spacing, typography } from '../theme';
-import { insertLog } from '../db/database';
+import { insertLog, insertRatingSession, updateRatingSession } from '../db/database';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Rating'>;
+type RatingRouteProp = RouteProp<RootStackParamList, 'Rating'>;
 
 export default function RatingScreen() {
   const navigation = useNavigation<NavigationProp>();
+  const route = useRoute<RatingRouteProp>();
   const [rating, setRating] = useState<number | null>(null);
+
+  // ─── Session tracking ────────────────────────────────────────────────
+  const sessionIdRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const id = await insertRatingSession({
+          breathingSessionId: route.params?.breathingSessionId,
+          groundingSessionId: route.params?.groundingSessionId,
+          relaxationSessionId: route.params?.relaxationSessionId,
+        });
+        sessionIdRef.current = id;
+      } catch (e) {
+        console.warn('Falha ao registrar abertura da sessão de avaliação:', e);
+      }
+    })();
+  }, [route.params]);
 
   const handleSave = async (ratingParam: number | null) => {
     if (ratingParam === null) return;
     try {
+      // Update the rating session log
+      if (sessionIdRef.current !== null) {
+        await updateRatingSession(sessionIdRef.current, ratingParam);
+      }
+      // Keep backward-compatible panic_logs entry
       await insertLog(ratingParam);
       Alert.alert('Registro Salvo', 'Sua intensidade foi registrada com sucesso.');
       navigation.reset({

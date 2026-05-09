@@ -1,12 +1,19 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Animated } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { colors, spacing, typography } from '../theme';
 import { Check, Mic } from 'lucide-react-native';
+import {
+  insertGroundingSession,
+  updateGroundingRecStart,
+  updateGroundingRecEnd,
+  updateGroundingSessionExit,
+} from '../db/database';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Grounding'>;
+type GroundingRouteProp = RouteProp<RootStackParamList, 'Grounding'>;
 
 enum Status {
   Pending = 'pending',
@@ -24,10 +31,48 @@ const SENSES = [
 
 export default function GroundingScreen() {
   const navigation = useNavigation<NavigationProp>();
+  const route = useRoute<GroundingRouteProp>();
+  const breathingSessionId = route.params?.breathingSessionId;
   const [senses, setSenses] = useState(SENSES);
   const isBreathingCompleted = senses.every(sense => sense.status === Status.Completed);
   const isRecording = senses.some(sense => sense.status === Status.Recording);
   const pulseAnim = useRef(new Animated.Value(1)).current;
+
+  // ─── Session tracking ────────────────────────────────────────────────
+  const sessionIdRef = useRef<number | null>(null);
+  const exitHandledRef = useRef(false);
+  // Maps the display order index (0-4) to the item number (1-5) stored in DB
+  const getItemNumber = (senseIndex: number) => senseIndex + 1;
+
+  const finalizeSession = useCallback(async (destination: string) => {
+    if (exitHandledRef.current || sessionIdRef.current === null) return;
+    exitHandledRef.current = true;
+    try {
+      await updateGroundingSessionExit(sessionIdRef.current, destination);
+    } catch (e) {
+      console.warn('Falha ao registrar saída da sessão de grounding:', e);
+    }
+  }, []);
+
+  // Insert session record on mount
+  useEffect(() => {
+    (async () => {
+      try {
+        const id = await insertGroundingSession(breathingSessionId);
+        sessionIdRef.current = id;
+      } catch (e) {
+        console.warn('Falha ao registrar abertura da sessão de grounding:', e);
+      }
+    })();
+  }, [breathingSessionId]);
+
+  // Capture back / gesture exits
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('beforeRemove', () => {
+      finalizeSession('back');
+    });
+    return unsubscribe;
+  }, [navigation, finalizeSession]);
 
   useEffect(() => {
     if (isRecording) {
@@ -55,16 +100,37 @@ export default function GroundingScreen() {
     const nextSense = senses.find(sense => [Status.Pending, Status.Recording].includes(sense.status));
 
     if (nextSense == null) {
-      navigation.navigate('Relaxation');
+      finalizeSession('Relaxation');
+      navigation.navigate('Relaxation', {
+        groundingSessionId: sessionIdRef.current ?? undefined,
+      });
       return;
     }
+
+    // Determine the display-order index of this sense item
+    const senseIndex = senses.indexOf(nextSense);
+    const itemNumber = getItemNumber(senseIndex);
+
     if (isRecording) {
       if (nextSense) {
+        // Ending a recording → log rec_end
+        if (sessionIdRef.current !== null) {
+          updateGroundingRecEnd(sessionIdRef.current, itemNumber).catch(e =>
+            console.warn('Falha ao registrar fim da gravação:', e)
+          );
+        }
         setSenses(senses.map(sense => sense.id === nextSense.id ? { ...sense, status: Status.Completed } : sense));
       } else {
+        finalizeSession('Relaxation');
         navigation.navigate('Relaxation');
       }
     } else {
+      // Starting a recording → log rec_start
+      if (sessionIdRef.current !== null) {
+        updateGroundingRecStart(sessionIdRef.current, itemNumber).catch(e =>
+          console.warn('Falha ao registrar início da gravação:', e)
+        );
+      }
       setSenses(senses.map(sense => sense.id === nextSense?.id ? { ...sense, status: Status.Recording } : sense));
     }
   };
@@ -96,13 +162,23 @@ export default function GroundingScreen() {
       <View style={styles.buttonContainer}>
         <TouchableOpacity
           style={[styles.button, styles.secondaryButton]}
-          onPress={() => navigation.navigate('Rating')}
+          onPress={async () => {
+            await finalizeSession('Rating');
+            navigation.navigate('Rating', {
+              groundingSessionId: sessionIdRef.current ?? undefined,
+            });
+          }}
         >
           <Text style={styles.buttonTextDark}>Eu melhorei</Text>
         </TouchableOpacity>
 
         {isBreathingCompleted && (
-          <TouchableOpacity style={[styles.buttonNext]} onPress={toggleRecording}>
+          <TouchableOpacity style={[styles.buttonNext]} onPress={() => {
+            finalizeSession('Relaxation');
+            navigation.navigate('Relaxation', {
+              groundingSessionId: sessionIdRef.current ?? undefined,
+            });
+          }}>
             <Text style={styles.buttonTextDark}>Avançar</Text>
           </TouchableOpacity>
         )}
@@ -179,6 +255,7 @@ const styles = StyleSheet.create({
     marginRight: spacing.m,
   },
   itemText: {
+    flex: 1,
     fontSize: typography.sizes.medium,
     color: colors.text,
     fontWeight: typography.weights.medium,
